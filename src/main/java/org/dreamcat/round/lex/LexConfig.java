@@ -67,12 +67,14 @@ public class LexConfig {
 
     // ==== ==== ==== ====    ==== ==== ==== ====    ==== ==== ==== ====
 
-    public void addKeyword(IdentifierToken keywordToken) {
+    public LexConfig addKeyword(IdentifierToken keywordToken) {
         keywords.put(keywordToken.getIdentifier(), keywordToken);
+        return this;
     }
 
-    public void addIdentifierValue(IdentifierToken keywordToken) {
+    public LexConfig addIdentifierValue(IdentifierToken keywordToken) {
         identifierValues.put(keywordToken.getIdentifier(), keywordToken);
+        return this;
     }
 
     // ==== ==== ==== ====    ==== ==== ==== ====    ==== ==== ==== ====
