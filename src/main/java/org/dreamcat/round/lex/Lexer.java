@@ -82,10 +82,7 @@ public final class Lexer {
                 String v = StringSearcher.searchVar(expression, i);
                 Token token = config.getKeywords().get(v);
                 if (token == null) {
-                    token = config.getIdentifierValues().get(v);
-                    if (token == null) {
-                        token = identifierCache.computeIfAbsent(v, IdentifierToken::new);
-                    }
+                    token = identifierCache.computeIfAbsent(v, IdentifierToken::new);
                 }
                 stream.add(TokenInfo.of(token, i, i + v.length()));
                 i += v.length() - 1;

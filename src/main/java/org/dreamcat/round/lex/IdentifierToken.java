@@ -37,4 +37,8 @@ public class IdentifierToken extends AbstractToken {
     public int hashCode() {
         return Objects.hashCode(getIdentifier());
     }
+    
+    public boolean is(String identifier) {
+        return Objects.equals(getIdentifier(), identifier);
+    }
 }

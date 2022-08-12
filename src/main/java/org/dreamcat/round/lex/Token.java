@@ -90,7 +90,6 @@ public interface Token {
         IDENTIFIER,
         STRING,
         NUMBER,
-        IDENTIFIER_VALUE,
         OPERATOR,
         PUNCTUATION,
         COMMENT,

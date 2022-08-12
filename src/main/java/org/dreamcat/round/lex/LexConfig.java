@@ -25,11 +25,7 @@ public class LexConfig {
     /**
      * keyword to cache
      */
-    private final Map<String, IdentifierToken> keywords = new ConcurrentHashMap<>();
-    /**
-     * identifier value to cache
-     */
-    private final Map<String, IdentifierToken> identifierValues = new ConcurrentHashMap<>();
+    private Map<String, IdentifierToken> keywords;
     /**
      * which strategy to determine the value type of number tokens
      */
@@ -63,17 +59,15 @@ public class LexConfig {
     /**
      * sample char count when throw a wrong syntax exception
      */
-    protected int sampleCharCount = 1 << 8; // set to <=0 to disable it
+    private int sampleCharCount = 1 << 8; // set to <=0 to disable it
 
     // ==== ==== ==== ====    ==== ==== ==== ====    ==== ==== ==== ====
 
-    public LexConfig addKeyword(IdentifierToken keywordToken) {
+    public synchronized LexConfig addKeyword(IdentifierToken keywordToken) {
+        if (keywords == null) {
+            keywords = new ConcurrentHashMap<>();
+        }
         keywords.put(keywordToken.getIdentifier(), keywordToken);
-        return this;
-    }
-
-    public LexConfig addIdentifierValue(IdentifierToken keywordToken) {
-        identifierValues.put(keywordToken.getIdentifier(), keywordToken);
         return this;
     }
 
