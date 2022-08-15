@@ -11,12 +11,14 @@ import org.dreamcat.common.Pair;
 @Getter
 @RequiredArgsConstructor
 public enum OperatorToken implements Token {
-    ASSIGN("=", 15, false),
-    IDENTIFIER("?", 14), // treat identifier as a very low priority
-    OR("||", "or", 13),
-    AND("&&", "and", 12),
+    ASSIGN("=", 314, false), // very low priority
+    OR("||", "or", 14),
+    AND("&&", "and", 13),
+    LEFT_SHIFT("<<", 12),
+    RIGHT_SHIFT(">>", 12),
+    UNSIGNED_RIGHT_SHIFT(">>>", 12),
     BIT_OR("|", 11),
-    BIT_XOR("^", 10),
+    BIT_XOR("^", "xor", 10),
     BIT_AND("&", 9),
     BIT_NOT("~", 8),
     EQ("==", "eq", 7),
@@ -29,13 +31,21 @@ public enum OperatorToken implements Token {
     SUB("-", 4),
     MUL("*", 3),
     DOUBLE_MUL("**", 3),
+    DOT_MUL(".*", 3),
     DIV("/", 3),
+    DOUBLE_DIV("//", 3),
+    DOT_DIV("./", 3),
+    LEFT_DIV("\\", 3),
+    DOUBLE_LEFT_DIV("\\\\", 3),
+    DOT_LEFT_DIV(".\\", 3),
     REM("%", 3),
     NOT("!", "not", 2),
-    BRACKET("[]", 1), // treat [] as a very high priority
     DOT(".", 1),
     DOUBLE_DOT("..", 1),
-    DOUBLE_COLON("::", 1),
+    TRIPLE_DOT("...", 1),
+    QUESTION("?", 1),
+    DOUBLE_ADD("++", 1),
+    DOUBLE_SUB("--", 1),
     ;
 
     final String raw;
@@ -90,14 +100,29 @@ public enum OperatorToken implements Token {
         int size = sql.length();
         if (c == '.') {
             if (offset < size - 1 && sql.charAt(offset + 1) == '.') {
-                return Pair.of(DOUBLE_DOT, offset + 2);
+                char n = sql.charAt(offset + 1);
+                if (n == '.') {
+                    if (offset < size - 2 && sql.charAt(offset + 2) == '.') {
+                        return Pair.of(TRIPLE_DOT, offset + 3);
+                    } else return Pair.of(DOUBLE_DOT, offset + 2);
+                } else if (n == '*') {
+                    return Pair.of(DOT_MUL, offset + 2);
+                } else if (n == '/') {
+                    return Pair.of(DOT_DIV, offset + 2);
+                } else if (n == '\\') {
+                    return Pair.of(DOT_LEFT_DIV, offset + 2);
+                }
             } else {
                 return Pair.of(DOT, offset + 1);
             }
         } else if (c == '+') {
-            return Pair.of(ADD, offset + 1);
+            if (offset < size - 1 && sql.charAt(offset + 1) == '+') {
+                return Pair.of(DOUBLE_ADD, offset + 2);
+            } else return Pair.of(ADD, offset + 1);
         } else if (c == '-') {
-            return Pair.of(SUB, offset + 1);
+            if (offset < size - 1 && sql.charAt(offset + 1) == '-') {
+                return Pair.of(DOUBLE_SUB, offset + 2);
+            } else return Pair.of(SUB, offset + 1);
         } else if (c == '*') {
             if (offset < size - 1 && sql.charAt(offset + 1) == '*') {
                 return Pair.of(DOUBLE_MUL, offset + 2);
@@ -105,7 +130,13 @@ public enum OperatorToken implements Token {
                 return Pair.of(MUL, offset + 1);
             }
         } else if (c == '/') {
-            return Pair.of(DIV, offset + 1);
+            if (offset < size - 1 && sql.charAt(offset + 1) == '/') {
+                return Pair.of(DOUBLE_DIV, offset + 2);
+            } else return Pair.of(DIV, offset + 1);
+        } else if (c == '\\') {
+            if (offset < size - 1 && sql.charAt(offset + 1) == '\\') {
+                return Pair.of(DOUBLE_LEFT_DIV, offset + 2);
+            } else return Pair.of(LEFT_DIV, offset + 1);
         } else if (c == '%') {
             return Pair.of(REM, offset + 1);
         } else if (c == '=') {
@@ -133,14 +164,26 @@ public enum OperatorToken implements Token {
                 return Pair.of(NOT, offset + 1);
             }
         } else if (c == '<') {
-            if (offset < size - 1 && sql.charAt(offset + 1) == '=') {
-                return Pair.of(LE, offset + 2);
+            if (offset < size - 1) {
+                char n = sql.charAt(offset + 1);
+                if (n == '=') {
+                    return Pair.of(LE, offset + 2);
+                } else if (n == '<') {
+                    return Pair.of(LEFT_SHIFT, offset + 2);
+                }
             } else {
                 return Pair.of(LT, offset + 1);
             }
         } else if (c == '>') {
             if (offset < size - 1 && sql.charAt(offset + 1) == '=') {
-                return Pair.of(GE, offset + 2);
+                char n = sql.charAt(offset + 1);
+                if (n == '=') {
+                    return Pair.of(GE, offset + 2);
+                } else if (n == '>') {
+                    if (offset < size - 2 && sql.charAt(offset + 2) == '>') {
+                        return Pair.of(UNSIGNED_RIGHT_SHIFT, offset + 3);
+                    } return Pair.of(RIGHT_SHIFT, offset + 2);
+                }
             } else {
                 return Pair.of(GT, offset + 1);
             }
@@ -148,8 +191,9 @@ public enum OperatorToken implements Token {
             return Pair.of(BIT_XOR, offset + 1);
         } else if (c == '~') {
             return Pair.of(BIT_NOT, offset + 1);
-        } else {
-            return null;
+        } else if (c == '?') {
+            return Pair.of(QUESTION, offset + 1);
         }
+        return null;
     }
 }
