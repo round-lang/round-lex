@@ -11,6 +11,7 @@ import org.dreamcat.common.Pair;
 @Getter
 @RequiredArgsConstructor
 public enum OperatorToken implements Token {
+    ROW("->", 2718),
     ASSIGN("=", 314, false), // very low priority
     OR("||", "or", 14),
     AND("&&", "and", 13),
@@ -121,7 +122,12 @@ public enum OperatorToken implements Token {
             } else return Pair.of(ADD, offset + 1);
         } else if (c == '-') {
             if (offset < size - 1 && sql.charAt(offset + 1) == '-') {
-                return Pair.of(DOUBLE_SUB, offset + 2);
+                char n = sql.charAt(offset + 1);
+                if (n == '-') {
+                    return Pair.of(DOUBLE_SUB, offset + 2);
+                } else if (n == '>') {
+                    return Pair.of(ROW, offset + 2);
+                }
             } else return Pair.of(SUB, offset + 1);
         } else if (c == '*') {
             if (offset < size - 1 && sql.charAt(offset + 1) == '*') {
