@@ -64,6 +64,7 @@ public class LexConfig {
      * sample char count when throw a wrong syntax exception
      */
     private int sampleCharCount = 1 << 8; // set to <=0 to disable it
+    private boolean enableTokenInfo = true; // to compute the tokenInfo
 
     // ==== ==== ==== ====    ==== ==== ==== ====    ==== ==== ==== ====
 

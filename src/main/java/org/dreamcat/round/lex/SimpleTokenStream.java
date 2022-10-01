@@ -29,7 +29,9 @@ class SimpleTokenStream implements TokenStream {
 
     // only invoke it in a lexer
     void add(TokenInfo tokenInfo) {
-        computeTokenInfo(tokenInfo);
+        if (config.isEnableTokenInfo()) {
+            computeTokenInfo(tokenInfo);
+        }
         tokenInfos.add(tokenInfo);
         size++;
     }
