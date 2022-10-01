@@ -42,6 +42,7 @@ class LazyTokenStream implements TokenStream {
 
     @Override
     public Token next() {
+        if (!hasNext()) return throwWrongSyntax();
         return stream.next();
     }
 
