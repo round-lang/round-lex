@@ -2,6 +2,7 @@ package org.dreamcat.round.lex;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -73,8 +74,17 @@ public class LexConfig {
 
     // ==== ==== ==== ====    ==== ==== ==== ====    ==== ==== ==== ====
 
-    public LexConfig addKeyword(IdentifierToken keywordToken) {
-        keywords.put(keywordToken.getIdentifier(), keywordToken);
+    public LexConfig addKeyword(IdentifierToken... keywordTokens) {
+        for (IdentifierToken keywordToken : keywordTokens) {
+            keywords.put(keywordToken.getIdentifier(), keywordToken);
+        }
+        return this;
+    }
+
+    public LexConfig addKeyword(Collection<? extends IdentifierToken> keywordTokens) {
+        for (IdentifierToken keywordToken : keywordTokens) {
+            keywords.put(keywordToken.getIdentifier(), keywordToken);
+        }
         return this;
     }
 
