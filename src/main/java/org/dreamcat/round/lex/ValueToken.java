@@ -8,7 +8,7 @@ import lombok.Getter;
  * @version 2022-02-02
  */
 @Getter
-public abstract class ValueToken<T> extends AbstractToken {
+public class ValueToken<T> extends AbstractToken {
 
     final T value;
 
