@@ -6,7 +6,7 @@ import lombok.Setter;
  * @author Jerry Will
  * @version 2021-09-07
  */
-class SimpleTokenInfoStream extends SimpleTokenStream {
+public class SimpleTokenInfoStream extends SimpleTokenStream {
 
     @Setter
     int firstLineNo = 1;
@@ -18,7 +18,7 @@ class SimpleTokenInfoStream extends SimpleTokenStream {
     }
 
     // only invoke it in a lexer
-    void add(Token token, int start, int end) {
+    public void add(Token token, int start, int end) {
         TokenInfo tokenInfo = TokenInfo.of(token, start, end);
         computeTokenInfo(tokenInfo);
         tokens.add(tokenInfo);

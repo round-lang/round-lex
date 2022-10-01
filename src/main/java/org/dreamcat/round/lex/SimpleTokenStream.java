@@ -11,7 +11,7 @@ import org.dreamcat.common.util.StreamUtil;
  * @version 2021-09-07
  */
 @RequiredArgsConstructor
-class SimpleTokenStream implements TokenStream {
+public class SimpleTokenStream implements TokenStream {
 
     @Getter
     final String expression;
@@ -21,8 +21,12 @@ class SimpleTokenStream implements TokenStream {
     int offset; // index of next token to return
     int mark; // marked offset
 
+    public void add(Token token) {
+        add(token, -1, -1);
+    }
+
     // only invoke it in a lexer
-    void add(Token token, int start, int end) {
+    public void add(Token token, int start, int end) {
         tokens.add(token);
         size++;
     }
