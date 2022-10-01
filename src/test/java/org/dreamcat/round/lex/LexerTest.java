@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import org.dreamcat.common.io.ClassPathUtil;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -15,8 +16,10 @@ import org.junit.jupiter.api.Test;
  */
 class LexerTest {
 
-    @Test
-    void test() throws IOException {
+    private String expression;
+
+    @BeforeEach
+    void init() throws IOException {
         File projectDir = new File(".").getCanonicalFile();
         assert projectDir.getName().equals("round-lex");
 
@@ -29,10 +32,29 @@ class LexerTest {
         Files.copy(currentFile.toPath(), resourceFile.toPath(),
                 StandardCopyOption.REPLACE_EXISTING);
 
-        String expression = ClassPathUtil.getResourceAsString(clsJava);
-        Lexer lexer = new Lexer(new LexConfig());
+        this.expression = ClassPathUtil.getResourceAsString(clsJava);
+    }
+
+    @Test
+    void test() {
+        Lexer lexer = new Lexer();
         TokenStream stream = lexer.lex(expression);
         while (stream.hasNext()) {
+            System.out.println(stream.get());
+            stream.next();
+        }
+    }
+
+    @Test
+    void testLazily() {
+        Lexer lexer = new Lexer();
+        TokenStream stream = lexer.lexLazily(expression);
+        while (stream.hasNext()) {
+            try {
+                stream.throwWrongSyntax();
+            } catch (Exception e) {
+                // System.out.println(e.getClass() + ": " + e.getMessage());
+            }
             System.out.println(stream.get());
             stream.next();
         }

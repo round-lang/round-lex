@@ -54,4 +54,10 @@ public interface TokenStream {
      * @return never reach here
      */
     <T> T throwWrongSyntax();
+
+    /**
+     * make a clone
+     * refuse to use {@link Object#clone()} since it sucks!
+     */
+    TokenStream copy();
 }

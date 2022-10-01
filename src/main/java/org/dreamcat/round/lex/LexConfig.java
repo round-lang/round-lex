@@ -4,12 +4,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.dreamcat.common.Pair;
 import org.dreamcat.common.function.QuaFunction;
+import org.dreamcat.common.util.StreamUtil;
 import org.dreamcat.round.exception.LexCompileException;
 import org.dreamcat.round.exception.SyntaxCompileException;
 
@@ -25,7 +27,7 @@ public class LexConfig {
     /**
      * keyword to cache
      */
-    private Map<String, IdentifierToken> keywords;
+    private final Map<String, IdentifierToken> keywords = new ConcurrentHashMap<>();
     /**
      * which strategy to determine the value type of number tokens
      */
@@ -44,13 +46,15 @@ public class LexConfig {
     /**
      * supply a syntax exception
      */
-    private Function<TokenStream, SyntaxCompileException> syntaxExceptionProducer =
+    private BiFunction<TokenInfo, TokenStream, SyntaxCompileException> syntaxExceptionProducer =
             this::produceSyntaxCompileException;
     /**
      * supply a lex exception
      */
     private QuaFunction<String, Integer, Integer, Integer, LexCompileException>
             lexExceptionProducer = this::produceLexCompileException;
+
+    // ---- ---- ---- ----    ---- ---- ---- ----    ---- ---- ---- ----
 
     /**
      * use in help information
@@ -63,10 +67,7 @@ public class LexConfig {
 
     // ==== ==== ==== ====    ==== ==== ==== ====    ==== ==== ==== ====
 
-    public synchronized LexConfig addKeyword(IdentifierToken keywordToken) {
-        if (keywords == null) {
-            keywords = new ConcurrentHashMap<>();
-        }
+    public LexConfig addKeyword(IdentifierToken keywordToken) {
         keywords.put(keywordToken.getIdentifier(), keywordToken);
         return this;
     }
@@ -97,8 +98,11 @@ public class LexConfig {
     }
 
     private SyntaxCompileException produceSyntaxCompileException(
-            TokenStream stream) {
-        TokenInfo tokenInfo = stream.get();
+            TokenInfo tokenInfo, TokenStream stream) {
+        if (tokenInfo == null) {
+            return new SyntaxCompileException(null, stream,
+                    "You has wrong syntax in your empty " + name);
+        }
         if (sampleCharCount <= 0) {
             // no sample
             String message = String.format(

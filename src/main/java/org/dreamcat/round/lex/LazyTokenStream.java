@@ -1,49 +1,102 @@
 package org.dreamcat.round.lex;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import lombok.RequiredArgsConstructor;
+import lombok.Getter;
 import org.dreamcat.common.Pair;
 import org.dreamcat.common.text.NumberSearcher;
 import org.dreamcat.common.text.StringSearcher;
-import org.dreamcat.common.util.NumberUtil;
 import org.dreamcat.common.util.ObjectUtil;
+import org.dreamcat.common.util.StreamUtil;
 import org.dreamcat.common.util.StringUtil;
-import org.dreamcat.round.lex.LexConfig.BigNumberStrategy;
 
 /**
  * @author Jerry Will
- * @since 2021-07-04
+ * @version 2022-10-01
  */
-@RequiredArgsConstructor
-public class Lexer {
+@Getter
+class LazyTokenStream implements TokenStream {
 
-    final LexConfig config;
-    final Map<String, IdentifierToken> identifierCache = new ConcurrentHashMap<>();
-    final Map<String, NumberToken> numberCache = new ConcurrentHashMap<>();
+    private final Lexer lexer;
+    private final String expression;
 
-    public Lexer() {
-        this(new LexConfig());
+    private final LexConfig config;
+    private final int len; // expression length
+    private int i = -1; // expression offset
+    private final List<TokenInfo> tokenInfos = new ArrayList<>();
+    private int offset; // index of next token to return
+    private int mark; // marked offset
+
+    public LazyTokenStream(Lexer lexer, String expression) {
+        this.lexer = lexer;
+        this.expression = expression;
+        this.config = lexer.config;
+        this.len = expression.length();
     }
 
-    public void clear() {
-        identifierCache.clear();
-        numberCache.clear();
+    @Override
+    public boolean hasNext() {
+        return offset < tokenInfos.size() ||
+                readNextToken();
     }
 
-    public TokenStream lexLazily(String expression) {
-        return new LazyTokenStream(this, expression);
+    @Override
+    public Token next() {
+        if (!hasNext()) return throwWrongSyntax();
+        return tokenInfos.get(offset++).getToken();
     }
 
-    public TokenStream lex(String expression) {
-        SimpleTokenStream stream = new SimpleTokenStream(expression, config);
+    @Override
+    public boolean hasPrevious() {
+        return offset > 0;
+    }
 
-        int len = expression.length(), j;
-        outer:
-        for (int i = 0; i < len; i++) {
+    @Override
+    public Token previous() {
+        if (!hasPrevious()) return throwWrongSyntax();
+        return tokenInfos.get(--offset).getToken();
+    }
+
+    @Override
+    public TokenInfo get() {
+        if (offset < 0 || offset >= tokenInfos.size()) return throwWrongSyntax();
+        return tokenInfos.get(offset);
+    }
+
+    @Override
+    public void mark() {
+        mark = offset;
+    }
+
+    @Override
+    public void reset() {
+        offset = mark;
+        mark = 0; // clear mark
+    }
+
+    @Override
+    public <T> T throwWrongSyntax() {
+        if (tokenInfos.isEmpty()) {
+            throw config.getSyntaxExceptionProducer().apply(null, this);
+        }
+        throw config.getSyntaxExceptionProducer().apply(getAdjusted(), copy());
+    }
+
+    @Override
+    public TokenStream copy() {
+        LazyTokenStream copy = new LazyTokenStream(lexer, expression);
+        copy.i = i;
+        copy.tokenInfos.addAll(tokenInfos);
+        copy.offset = offset;
+        copy.mark = mark;
+        return copy;
+    }
+
+    // ---- ---- ---- ----    ---- ---- ---- ----    ---- ---- ---- ----
+
+    private boolean readNextToken() {
+        i++; // forward
+        for (int j; i < len; i++) {
             char c = expression.charAt(i);
             if (c <= ' ') continue;
 
@@ -56,10 +109,9 @@ public class Lexer {
                     if (c == first && i < len - width && expression.substring(i, i + width).equals(singleComment)) {
                         for (j = i + width; j < len && (c = expression.charAt(j)) != '\n'; j++) ;
                         CommentToken token = CommentToken.of(expression.substring(i, j), singleComment);
-                        stream.add(TokenInfo.of(token, i, j));
+                        tokenInfos.add(TokenInfo.of(token, i, j));
                         i = j;
-                        if (c == '\n') continue outer; // found \n
-                        else break outer; // found EOF
+                        return true; // found \n or EOF
                     }
                 }
             }
@@ -75,12 +127,12 @@ public class Lexer {
                             if (expression.charAt(j) == last && expression.substring(j, j + endWidth).equals(end)) {
                                 CommentToken token = CommentToken.of(
                                         expression.substring(i, j += endWidth), start, end);
-                                stream.add(TokenInfo.of(token, i, j));
+                                tokenInfos.add(TokenInfo.of(token, i, j));
                                 i = j;
-                                continue outer;
+                                return true;
                             }
                         }
-                        return throwInvalidToken(expression, i);
+                        return lexer.throwInvalidToken(expression, i); // throws error
                     }
                 }
             }
@@ -90,34 +142,34 @@ public class Lexer {
                 String v = StringSearcher.searchVar(expression, i);
                 Token token = config.getKeywords().get(v);
                 if (token == null) {
-                    token = identifierCache.computeIfAbsent(v, IdentifierToken::new);
+                    token = lexer.identifierCache.computeIfAbsent(v, IdentifierToken::new);
                 }
-                stream.add(TokenInfo.of(token, i, i + v.length()));
+                tokenInfos.add(TokenInfo.of(token, i, i + v.length()));
                 i += v.length() - 1;
-                continue;
+                return true;
             }
 
             // number
             if (StringUtil.isNumberChar(c)) {
                 Pair<Integer, Boolean> pair = NumberSearcher.search(expression, i);
                 if (pair == null) {
-                    return throwInvalidToken(expression, len - 1);
+                    return lexer.throwInvalidToken(expression, len - 1);
                 }
                 String value = expression.substring(i, pair.first());
-                Number num = parseNumber(value, pair.second());
+                Number num = lexer.parseNumber(value, pair.second());
 
-                NumberToken token = numberCache.computeIfAbsent(
+                NumberToken token = lexer.numberCache.computeIfAbsent(
                         value, it -> new NumberToken(num, value));
-                stream.add(TokenInfo.of(token, i, pair.first()));
+                tokenInfos.add(TokenInfo.of(token, i, pair.first()));
                 i += value.length() - 1;
-                continue;
+                return true;
             }
 
             // string
             if (c == '\'' || c == '"' || c == '`') {
                 String value = StringSearcher.searchLiteral(expression, i);
                 if (value == null) {
-                    return throwInvalidToken(expression, len - 1);
+                    return lexer.throwInvalidToken(expression, len - 1);
                 }
                 StringToken token;
                 if (c == '\'') {
@@ -127,66 +179,33 @@ public class Lexer {
                 } else {
                     token = StringToken.ofBacktick(value);
                 }
-                stream.add(TokenInfo.of(token, i, i + value.length() + 2));
+                tokenInfos.add(TokenInfo.of(token, i, i + value.length() + 2));
                 i += value.length() + 1;
-                continue;
+                return true;
             }
 
             // punctuation
             PunctuationToken punctuationToken = PunctuationToken.search(c);
             if (punctuationToken != null) {
-                stream.add(TokenInfo.of(punctuationToken, i, i + 1));
-                continue;
+                tokenInfos.add(TokenInfo.of(punctuationToken, i, i + 1));
+                return true;
             }
 
             // operator
             Pair<OperatorToken, Integer> pair = OperatorToken.search(expression, i);
             if (pair != null) {
-                stream.add(TokenInfo.of(pair.first(), i, pair.second()));
+                tokenInfos.add(TokenInfo.of(pair.first(), i, pair.second()));
                 i = pair.second() - 1;
-                continue;
+                return true;
             }
 
-            throwInvalidToken(expression, i);
+            return lexer.throwInvalidToken(expression, i);
         }
-
-        return stream;
+        return false;
     }
 
-    Number parseNumber(String value, boolean floating) {
-        BigNumberStrategy bns = config.getBigNumberStrategy();
-        if (bns == BigNumberStrategy.NONE) {
-            return NumberUtil.parseNumber(value, floating);
-        } else {
-            if (floating) {
-                BigDecimal bigNum = new BigDecimal(value);
-                if (bns == BigNumberStrategy.RANGE &&
-                        NumberUtil.isDoubleRange(bigNum)) {
-                    return bigNum.doubleValue();
-                } else return bigNum;
-            } else {
-                BigInteger bigNum = new BigInteger(value);
-                if (bns == BigNumberStrategy.RANGE && NumberUtil.isLongRange(bigNum)) {
-                    if (NumberUtil.isIntRange(bigNum)) {
-                        return bigNum.intValue();
-                    } else {
-                        return bigNum.longValue();
-                    }
-                } else return bigNum;
-            }
-        }
-    }
-
-    <T> T throwInvalidToken(String expression, int offset) {
-        int line = 1, col = 1;
-        for (int i = 0; i <= offset; i++) {
-            char c = expression.charAt(i);
-            if (c != '\n') col++;
-            else {
-                line++;
-                col = 1;
-            }
-        }
-        throw config.getLexExceptionProducer().apply(expression, offset, line, col);
+    private TokenInfo getAdjusted() {
+        int adjustedOffset = StreamUtil.limitRange(offset, 0, tokenInfos.size() - 1);
+        return tokenInfos.get(adjustedOffset);
     }
 }

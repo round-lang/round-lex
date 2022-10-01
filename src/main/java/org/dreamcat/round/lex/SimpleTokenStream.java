@@ -5,14 +5,14 @@ import java.util.List;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-import org.dreamcat.common.util.ObjectUtil;
+import org.dreamcat.common.util.StreamUtil;
 
 /**
  * @author Jerry Will
  * @version 2021-09-07
  */
 @RequiredArgsConstructor
-public class SimpleTokenStream implements TokenStream {
+class SimpleTokenStream implements TokenStream {
 
     @Getter
     private final String expression;
@@ -75,12 +75,24 @@ public class SimpleTokenStream implements TokenStream {
         mark = 0; // clear mark
     }
 
-    // ---- ---- ---- ----    ---- ---- ---- ----    ---- ---- ---- ----
-
     @Override
     public <T> T throwWrongSyntax() {
-        offset = ObjectUtil.limitRange(offset, 0, size - 1);
-        throw config.getSyntaxExceptionProducer().apply(this);
+        if (tokenInfos.isEmpty()) {
+            throw config.getSyntaxExceptionProducer().apply(null, this);
+        }
+        throw config.getSyntaxExceptionProducer().apply(getAdjusted(), copy());
+    }
+
+    @Override
+    public TokenStream copy() {
+        SimpleTokenStream copy = new SimpleTokenStream(expression, config);
+        copy.tokenInfos.addAll(tokenInfos);
+        copy.size = size;
+        copy.offset = offset;
+        copy.mark = mark;
+        copy.firstLineNo = firstLineNo;
+        copy.firstCol = firstCol;
+        return copy;
     }
 
     // ---- ---- ---- ----    ---- ---- ---- ----    ---- ---- ---- ----
@@ -132,5 +144,10 @@ public class SimpleTokenStream implements TokenStream {
         tokenInfo.startCol = startCol;
         tokenInfo.endLine = endLine;
         tokenInfo.endCol = endCol;
+    }
+
+    private TokenInfo getAdjusted() {
+        int adjustedOffset = StreamUtil.limitRange(offset, 0, tokenInfos.size() - 1);
+        return tokenInfos.get(adjustedOffset);
     }
 }
