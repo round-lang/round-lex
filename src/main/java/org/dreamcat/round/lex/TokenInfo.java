@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
  */
 @Getter
 @RequiredArgsConstructor
-public class TokenInfo {
+public class TokenInfo implements Token {
 
     final Token token; // token in the expression
     final int start; // start offset in the expression
@@ -24,6 +24,16 @@ public class TokenInfo {
     public static TokenInfo of(
             Token token, int start, int end) {
         return new TokenInfo(token, start, end);
+    }
+
+    @Override
+    public Type getType() {
+        return token.getType();
+    }
+
+    @Override
+    public String getRaw() {
+        return token.getRaw();
     }
 
     @Override

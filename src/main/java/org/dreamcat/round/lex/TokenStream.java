@@ -34,7 +34,7 @@ public interface TokenStream {
     /**
      * get next token, but not to move offset
      */
-    TokenInfo get();
+    Token get();
 
     /**
      * mark the current offset

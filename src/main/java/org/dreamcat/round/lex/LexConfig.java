@@ -46,7 +46,7 @@ public class LexConfig {
     /**
      * supply a syntax exception
      */
-    private BiFunction<TokenInfo, TokenStream, SyntaxCompileException> syntaxExceptionProducer =
+    private BiFunction<Token, TokenStream, SyntaxCompileException> syntaxExceptionProducer =
             this::produceSyntaxCompileException;
     /**
      * supply a lex exception
@@ -64,7 +64,8 @@ public class LexConfig {
      * sample char count when throw a wrong syntax exception
      */
     private int sampleCharCount = 1 << 8; // set to <=0 to disable it
-    private boolean enableTokenInfo = true; // to compute the tokenInfo
+    private boolean enableLazy; // lazy parse
+    private boolean enableTokenInfo; // use TokenInfo instead of Token
 
     // ==== ==== ==== ====    ==== ==== ==== ====    ==== ==== ==== ====
 
@@ -99,11 +100,15 @@ public class LexConfig {
     }
 
     private SyntaxCompileException produceSyntaxCompileException(
-            TokenInfo tokenInfo, TokenStream stream) {
-        if (tokenInfo == null) {
+            Token token, TokenStream stream) {
+        if (token == null) {
             return new SyntaxCompileException(null, stream,
                     "You has wrong syntax in your empty " + name);
+        } else if (!(token instanceof TokenInfo)) {
+            return new SyntaxCompileException(null, stream, String.format(
+                    "You has wrong syntax in your %s, invalid token %s", name, token));
         }
+        TokenInfo tokenInfo = (TokenInfo) token;
         if (sampleCharCount <= 0) {
             // no sample
             String message = String.format(
@@ -137,7 +142,7 @@ public class LexConfig {
         stream.mark();
         while (stream.hasPrevious()) {
             stream.previous();
-            TokenInfo prev = stream.get();
+            TokenInfo prev = (TokenInfo) stream.get();
             if (prev.getStart() > leftMargin) {
                 left = prev;
             } else break;
@@ -147,7 +152,7 @@ public class LexConfig {
         stream.reset();
         stream.next(); // consume the current token
         while (stream.hasNext()) {
-            TokenInfo next = stream.get();
+            TokenInfo next = (TokenInfo) stream.get();
             if (next.getEnd() < rightMargin) {
                 right = next;
             } else break;

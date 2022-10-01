@@ -13,37 +13,77 @@ import org.dreamcat.common.util.StringUtil;
  * @version 2022-10-01
  */
 @Getter
-class LazyTokenStream extends SimpleTokenStream {
+class LazyTokenStream implements TokenStream {
 
-    private final Lexer lexer;
+    final Lexer lexer;
+    final LexConfig config;
+    final String expression;
+    final SimpleTokenStream stream;
+    final int len; // expression length
+    int i = -1; // expression offset
 
-    private final int len; // expression length
-    private int i = -1; // expression offset
+    protected LazyTokenStream(Lexer lexer, SimpleTokenStream stream) {
+        this.lexer = lexer;
+        this.config = lexer.config;
+        this.expression = stream.getExpression();
+        this.stream = stream;
+        this.len = expression.length();
+    }
 
     public LazyTokenStream(Lexer lexer, String expression) {
-        super(expression, lexer.config);
-        this.lexer = lexer;
-        this.len = expression.length();
+        this(lexer, new SimpleTokenStream(expression, lexer.config));
     }
 
     @Override
     public boolean hasNext() {
-        return offset < size ||
+        return stream.hasNext() ||
                 readNextToken();
+    }
+
+    @Override
+    public Token next() {
+        return stream.next();
+    }
+
+    @Override
+    public boolean hasPrevious() {
+        return stream.hasPrevious();
+    }
+
+    @Override
+    public Token previous() {
+        return stream.previous();
+    }
+
+    @Override
+    public Token get() {
+        return stream.get();
+    }
+
+    @Override
+    public void mark() {
+        stream.mark();
+    }
+
+    @Override
+    public void reset() {
+        stream.reset();
+    }
+
+    @Override
+    public <T> T throwWrongSyntax() {
+        return stream.throwWrongSyntax();
     }
 
     @Override
     public TokenStream copy() {
         LazyTokenStream copy = new LazyTokenStream(lexer, expression);
-        copy.tokenInfos.addAll(tokenInfos);
-        copy.size = size;
-        copy.offset = offset;
-        copy.mark = mark;
-        copy.firstLineNo = firstLineNo;
-        copy.firstCol = firstCol;
-
         copy.i = i;
         return copy;
+    }
+
+    private void addToken(Token token, int start, int end) {
+        stream.add(token, start, end);
     }
 
     // ---- ---- ---- ----    ---- ---- ---- ----    ---- ---- ---- ----
@@ -63,7 +103,7 @@ class LazyTokenStream extends SimpleTokenStream {
                     if (c == first && i < len - width && expression.substring(i, i + width).equals(singleComment)) {
                         for (j = i + width; j < len && (c = expression.charAt(j)) != '\n'; j++) ;
                         CommentToken token = CommentToken.of(expression.substring(i, j), singleComment);
-                        add(TokenInfo.of(token, i, j));
+                        addToken(token, i, j);
                         i = j;
                         return true; // found \n or EOF
                     }
@@ -81,7 +121,7 @@ class LazyTokenStream extends SimpleTokenStream {
                             if (expression.charAt(j) == last && expression.substring(j, j + endWidth).equals(end)) {
                                 CommentToken token = CommentToken.of(
                                         expression.substring(i, j += endWidth), start, end);
-                                add(TokenInfo.of(token, i, j));
+                                addToken(token, i, j);
                                 i = j;
                                 return true;
                             }
@@ -98,7 +138,7 @@ class LazyTokenStream extends SimpleTokenStream {
                 if (token == null) {
                     token = lexer.identifierCache.computeIfAbsent(v, IdentifierToken::new);
                 }
-                add(TokenInfo.of(token, i, i + v.length()));
+                addToken(token, i, i + v.length());
                 i += v.length() - 1;
                 return true;
             }
@@ -114,7 +154,7 @@ class LazyTokenStream extends SimpleTokenStream {
 
                 NumberToken token = lexer.numberCache.computeIfAbsent(
                         value, it -> new NumberToken(num, value));
-                add(TokenInfo.of(token, i, pair.first()));
+                addToken(token, i, pair.first());
                 i += value.length() - 1;
                 return true;
             }
@@ -133,7 +173,7 @@ class LazyTokenStream extends SimpleTokenStream {
                 } else {
                     token = StringToken.ofBacktick(value);
                 }
-                add(TokenInfo.of(token, i, i + value.length() + 2));
+                addToken(token, i, i + value.length() + 2);
                 i += value.length() + 1;
                 return true;
             }
@@ -141,14 +181,14 @@ class LazyTokenStream extends SimpleTokenStream {
             // punctuation
             PunctuationToken punctuationToken = PunctuationToken.search(c);
             if (punctuationToken != null) {
-                add(TokenInfo.of(punctuationToken, i, i + 1));
+                addToken(punctuationToken, i, i + 1);
                 return true;
             }
 
             // operator
             Pair<OperatorToken, Integer> pair = OperatorToken.search(expression, i);
             if (pair != null) {
-                add(TokenInfo.of(pair.first(), i, pair.second()));
+                addToken(pair.first(), i, pair.second());
                 i = pair.second() - 1;
                 return true;
             }

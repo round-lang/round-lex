@@ -8,7 +8,9 @@ public interface Token {
 
     Type getType();
 
-    String getRaw();
+    default String getRaw() {
+        throw new UnsupportedOperationException();
+    }
 
     default boolean isIdentifier() {
         return false;

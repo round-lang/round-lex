@@ -37,7 +37,7 @@ class LexerTest {
 
     @Test
     void test() {
-        Lexer lexer = new Lexer();
+        Lexer lexer = new Lexer(new LexConfig().setEnableTokenInfo(true));
         TokenStream stream = lexer.lex(expression);
         while (stream.hasNext()) {
             System.out.println(stream.get());
@@ -47,8 +47,8 @@ class LexerTest {
 
     @Test
     void testLazily() {
-        Lexer lexer = new Lexer();
-        TokenStream stream = lexer.lexLazily(expression);
+        Lexer lexer = new Lexer(new LexConfig().setEnableLazy(true).setEnableTokenInfo(true));
+        TokenStream stream = lexer.lex(expression);
         while (stream.hasNext()) {
             try {
                 stream.throwWrongSyntax();

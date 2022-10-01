@@ -34,13 +34,26 @@ public class Lexer {
         numberCache.clear();
     }
 
-    public TokenStream lexLazily(String expression) {
-        return new LazyTokenStream(this, expression);
+    public TokenStream lex(String expression) {
+        if (config.isEnableLazy()) {
+            if (config.isEnableTokenInfo()) {
+                return new LazyTokenInfoStream(this, expression);
+            } else {
+                return new LazyTokenStream(this, expression);
+            }
+        }
+        // no lazy
+        SimpleTokenStream stream;
+        if (config.isEnableTokenInfo()) {
+            stream = new SimpleTokenInfoStream(expression, config);
+        } else {
+            stream = new SimpleTokenStream(expression, config);
+        }
+        lex(expression, stream);
+        return stream;
     }
 
-    public TokenStream lex(String expression) {
-        SimpleTokenStream stream = new SimpleTokenStream(expression, config);
-
+    public void lex(String expression, SimpleTokenStream stream) {
         int len = expression.length(), j;
         outer:
         for (int i = 0; i < len; i++) {
@@ -56,7 +69,7 @@ public class Lexer {
                     if (c == first && i < len - width && expression.substring(i, i + width).equals(singleComment)) {
                         for (j = i + width; j < len && (c = expression.charAt(j)) != '\n'; j++) ;
                         CommentToken token = CommentToken.of(expression.substring(i, j), singleComment);
-                        stream.add(TokenInfo.of(token, i, j));
+                        stream.add(token, i, j);
                         i = j;
                         if (c == '\n') continue outer; // found \n
                         else break outer; // found EOF
@@ -75,12 +88,12 @@ public class Lexer {
                             if (expression.charAt(j) == last && expression.substring(j, j + endWidth).equals(end)) {
                                 CommentToken token = CommentToken.of(
                                         expression.substring(i, j += endWidth), start, end);
-                                stream.add(TokenInfo.of(token, i, j));
+                                stream.add(token, i, j);
                                 i = j;
                                 continue outer;
                             }
                         }
-                        return throwInvalidToken(expression, i);
+                        throwInvalidToken(expression, i);
                     }
                 }
             }
@@ -92,7 +105,7 @@ public class Lexer {
                 if (token == null) {
                     token = identifierCache.computeIfAbsent(v, IdentifierToken::new);
                 }
-                stream.add(TokenInfo.of(token, i, i + v.length()));
+                stream.add(token, i, i + v.length());
                 i += v.length() - 1;
                 continue;
             }
@@ -101,14 +114,14 @@ public class Lexer {
             if (StringUtil.isNumberChar(c)) {
                 Pair<Integer, Boolean> pair = NumberSearcher.search(expression, i);
                 if (pair == null) {
-                    return throwInvalidToken(expression, len - 1);
+                    throwInvalidToken(expression, len - 1);
                 }
                 String value = expression.substring(i, pair.first());
                 Number num = parseNumber(value, pair.second());
 
                 NumberToken token = numberCache.computeIfAbsent(
                         value, it -> new NumberToken(num, value));
-                stream.add(TokenInfo.of(token, i, pair.first()));
+                stream.add(token, i, pair.first());
                 i += value.length() - 1;
                 continue;
             }
@@ -117,7 +130,7 @@ public class Lexer {
             if (c == '\'' || c == '"' || c == '`') {
                 String value = StringSearcher.searchLiteral(expression, i);
                 if (value == null) {
-                    return throwInvalidToken(expression, len - 1);
+                    throwInvalidToken(expression, len - 1);
                 }
                 StringToken token;
                 if (c == '\'') {
@@ -127,7 +140,7 @@ public class Lexer {
                 } else {
                     token = StringToken.ofBacktick(value);
                 }
-                stream.add(TokenInfo.of(token, i, i + value.length() + 2));
+                stream.add(token, i, i + value.length() + 2);
                 i += value.length() + 1;
                 continue;
             }
@@ -135,22 +148,20 @@ public class Lexer {
             // punctuation
             PunctuationToken punctuationToken = PunctuationToken.search(c);
             if (punctuationToken != null) {
-                stream.add(TokenInfo.of(punctuationToken, i, i + 1));
+                stream.add(punctuationToken, i, i + 1);
                 continue;
             }
 
             // operator
             Pair<OperatorToken, Integer> pair = OperatorToken.search(expression, i);
             if (pair != null) {
-                stream.add(TokenInfo.of(pair.first(), i, pair.second()));
+                stream.add(pair.first(), i, pair.second());
                 i = pair.second() - 1;
                 continue;
             }
 
             throwInvalidToken(expression, i);
         }
-
-        return stream;
     }
 
     Number parseNumber(String value, boolean floating) {
