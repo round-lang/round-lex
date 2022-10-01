@@ -126,7 +126,7 @@ class LazyTokenStream implements TokenStream {
                                 return true;
                             }
                         }
-                        return lexer.throwInvalidToken(expression, i); // throws error
+                        throw config.getLexExceptionProducer().apply(expression, i);
                     }
                 }
             }
@@ -147,10 +147,10 @@ class LazyTokenStream implements TokenStream {
             if (StringUtil.isNumberChar(c)) {
                 Pair<Integer, Boolean> pair = NumberSearcher.search(expression, i);
                 if (pair == null) {
-                    return lexer.throwInvalidToken(expression, len - 1);
+                    throw config.getLexExceptionProducer().apply(expression, len - 1);
                 }
                 String value = expression.substring(i, pair.first());
-                Number num = lexer.parseNumber(value, pair.second());
+                Number num = config.parseNumber(value, pair.second());
 
                 NumberToken token = lexer.numberCache.computeIfAbsent(
                         value, it -> new NumberToken(num, value));
@@ -163,7 +163,7 @@ class LazyTokenStream implements TokenStream {
             if (c == '\'' || c == '"' || c == '`') {
                 String value = StringSearcher.searchLiteral(expression, i);
                 if (value == null) {
-                    return lexer.throwInvalidToken(expression, len - 1);
+                    throw config.getLexExceptionProducer().apply(expression, len - 1);
                 }
                 StringToken token;
                 if (c == '\'') {
@@ -193,7 +193,7 @@ class LazyTokenStream implements TokenStream {
                 return true;
             }
 
-            return lexer.throwInvalidToken(expression, i);
+            throw config.getLexExceptionProducer().apply(expression, i);
         }
         return false;
     }

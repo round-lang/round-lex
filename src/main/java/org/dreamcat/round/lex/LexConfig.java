@@ -1,5 +1,7 @@
 package org.dreamcat.round.lex;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +13,7 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.dreamcat.common.Pair;
 import org.dreamcat.common.function.QuaFunction;
+import org.dreamcat.common.util.NumberUtil;
 import org.dreamcat.common.util.StreamUtil;
 import org.dreamcat.round.exception.LexCompileException;
 import org.dreamcat.round.exception.SyntaxCompileException;
@@ -51,8 +54,9 @@ public class LexConfig {
     /**
      * supply a lex exception
      */
-    private QuaFunction<String, Integer, Integer, Integer, LexCompileException>
+    private BiFunction<String, Integer, LexCompileException>
             lexExceptionProducer = this::produceLexCompileException;
+
 
     // ---- ---- ---- ----    ---- ---- ---- ----    ---- ---- ---- ----
 
@@ -74,6 +78,29 @@ public class LexConfig {
         return this;
     }
 
+    public Number parseNumber(String value, boolean floating) {
+        if (bigNumberStrategy == BigNumberStrategy.NONE) {
+            return NumberUtil.parseNumber(value, floating);
+        } else {
+            if (floating) {
+                BigDecimal bigNum = new BigDecimal(value);
+                if (bigNumberStrategy == BigNumberStrategy.RANGE &&
+                        NumberUtil.isDoubleRange(bigNum)) {
+                    return bigNum.doubleValue();
+                } else return bigNum;
+            } else {
+                BigInteger bigNum = new BigInteger(value);
+                if (bigNumberStrategy == BigNumberStrategy.RANGE &&
+                        NumberUtil.isLongRange(bigNum)) {
+                    if (NumberUtil.isIntRange(bigNum)) {
+                        return bigNum.intValue();
+                    } else {
+                        return bigNum.longValue();
+                    }
+                } else return bigNum;
+            }
+        }
+    }
     // ==== ==== ==== ====    ==== ==== ==== ====    ==== ==== ==== ====
 
     public enum BigNumberStrategy {
@@ -92,7 +119,16 @@ public class LexConfig {
     }
 
     private LexCompileException produceLexCompileException(
-            String expression, int offset, int line, int col) {
+            String expression, int offset) {
+        int line = 1, col = 1;
+        for (int i = 0; i <= offset; i++) {
+            char c = expression.charAt(i);
+            if (c != '\n') col++;
+            else {
+                line++;
+                col = 1;
+            }
+        }
         String message = String.format(
                 "You has invalid character in your %s, near at line %d col %d",
                 name, line, col);

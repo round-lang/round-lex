@@ -1,7 +1,5 @@
 package org.dreamcat.round.lex;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,10 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.dreamcat.common.Pair;
 import org.dreamcat.common.text.NumberSearcher;
 import org.dreamcat.common.text.StringSearcher;
-import org.dreamcat.common.util.NumberUtil;
 import org.dreamcat.common.util.ObjectUtil;
 import org.dreamcat.common.util.StringUtil;
-import org.dreamcat.round.lex.LexConfig.BigNumberStrategy;
 
 /**
  * @author Jerry Will
@@ -93,12 +89,12 @@ public class Lexer {
                                 continue outer;
                             }
                         }
-                        throwInvalidToken(expression, i);
+                        throw config.getLexExceptionProducer().apply(expression, i);
                     }
                 }
             }
 
-            // identifier or identifier value
+            // identifier
             if (StringUtil.isFirstVariableChar(c)) {
                 String v = StringSearcher.searchVar(expression, i);
                 Token token = config.getKeywords().get(v);
@@ -114,10 +110,10 @@ public class Lexer {
             if (StringUtil.isNumberChar(c)) {
                 Pair<Integer, Boolean> pair = NumberSearcher.search(expression, i);
                 if (pair == null) {
-                    throwInvalidToken(expression, len - 1);
+                    throw config.getLexExceptionProducer().apply(expression, len - 1);
                 }
                 String value = expression.substring(i, pair.first());
-                Number num = parseNumber(value, pair.second());
+                Number num = config.parseNumber(value, pair.second());
 
                 NumberToken token = numberCache.computeIfAbsent(
                         value, it -> new NumberToken(num, value));
@@ -130,7 +126,7 @@ public class Lexer {
             if (c == '\'' || c == '"' || c == '`') {
                 String value = StringSearcher.searchLiteral(expression, i);
                 if (value == null) {
-                    throwInvalidToken(expression, len - 1);
+                    throw config.getLexExceptionProducer().apply(expression, len - 1);
                 }
                 StringToken token;
                 if (c == '\'') {
@@ -160,44 +156,7 @@ public class Lexer {
                 continue;
             }
 
-            throwInvalidToken(expression, i);
+            throw config.getLexExceptionProducer().apply(expression, i);
         }
-    }
-
-    Number parseNumber(String value, boolean floating) {
-        BigNumberStrategy bns = config.getBigNumberStrategy();
-        if (bns == BigNumberStrategy.NONE) {
-            return NumberUtil.parseNumber(value, floating);
-        } else {
-            if (floating) {
-                BigDecimal bigNum = new BigDecimal(value);
-                if (bns == BigNumberStrategy.RANGE &&
-                        NumberUtil.isDoubleRange(bigNum)) {
-                    return bigNum.doubleValue();
-                } else return bigNum;
-            } else {
-                BigInteger bigNum = new BigInteger(value);
-                if (bns == BigNumberStrategy.RANGE && NumberUtil.isLongRange(bigNum)) {
-                    if (NumberUtil.isIntRange(bigNum)) {
-                        return bigNum.intValue();
-                    } else {
-                        return bigNum.longValue();
-                    }
-                } else return bigNum;
-            }
-        }
-    }
-
-    <T> T throwInvalidToken(String expression, int offset) {
-        int line = 1, col = 1;
-        for (int i = 0; i <= offset; i++) {
-            char c = expression.charAt(i);
-            if (c != '\n') col++;
-            else {
-                line++;
-                col = 1;
-            }
-        }
-        throw config.getLexExceptionProducer().apply(expression, offset, line, col);
     }
 }
