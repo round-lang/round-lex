@@ -15,17 +15,17 @@ import org.dreamcat.common.util.StreamUtil;
 class SimpleTokenStream implements TokenStream {
 
     @Getter
-    private final String expression;
-    private final LexConfig config;
-    private final List<TokenInfo> tokenInfos = new ArrayList<>();
-    private int size;
-    private int offset; // index of next token to return
-    private int mark; // marked offset
+    final String expression;
+    final LexConfig config;
+    final List<TokenInfo> tokenInfos = new ArrayList<>();
+    int size;
+    int offset; // index of next token to return
+    int mark; // marked offset
 
     @Setter
-    private int firstLineNo = 1;
+    int firstLineNo = 1;
     @Setter
-    private int firstCol = 1;
+    int firstCol = 1;
 
     // only invoke it in a lexer
     void add(TokenInfo tokenInfo) {
