@@ -31,8 +31,8 @@ public class Lexer {
     }
 
     public TokenStream lex(String expression) {
-        if (config.isEnableLazy()) {
-            if (config.isEnableTokenInfo()) {
+        if (config.enableLazy()) {
+            if (config.enableTokenInfo()) {
                 return new LazyTokenInfoStream(this, expression);
             } else {
                 return new LazyTokenStream(this, expression);
@@ -40,7 +40,7 @@ public class Lexer {
         }
         // no lazy
         SimpleTokenStream stream;
-        if (config.isEnableTokenInfo()) {
+        if (config.enableTokenInfo()) {
             stream = new SimpleTokenInfoStream(expression, config);
         } else {
             stream = new SimpleTokenStream(expression, config);
@@ -57,7 +57,7 @@ public class Lexer {
             if (c <= ' ') continue;
 
             // comment
-            List<String> singleComments = config.getSingleComments();
+            List<String> singleComments = config.singleComments();
             if (ObjectUtil.isNotEmpty(singleComments)) {
                 for (String singleComment : singleComments) {
                     char first = singleComment.charAt(0);
@@ -73,7 +73,7 @@ public class Lexer {
                 }
             }
 
-            List<Pair<String, String>> multipleComments = config.getMultipleComments();
+            List<Pair<String, String>> multipleComments = config.multipleComments();
             if (ObjectUtil.isNotEmpty(multipleComments)) {
                 for (Pair<String, String> multipleComment : multipleComments) {
                     String start = multipleComment.first(), end = multipleComment.second();
@@ -89,7 +89,7 @@ public class Lexer {
                                 continue outer;
                             }
                         }
-                        throw config.getLexExceptionProducer().apply(expression, i);
+                        throw config.lexExceptionProducer().apply(expression, i);
                     }
                 }
             }
@@ -97,7 +97,7 @@ public class Lexer {
             // identifier
             if (StringUtil.isFirstVariableChar(c)) {
                 String v = StringSearcher.searchVar(expression, i);
-                Token token = config.getKeywords().get(v);
+                Token token = config.keywords().get(v);
                 if (token == null) {
                     token = identifierCache.computeIfAbsent(v, IdentifierToken::new);
                 }
@@ -110,7 +110,7 @@ public class Lexer {
             if (StringUtil.isNumberChar(c)) {
                 Pair<Integer, Boolean> pair = NumberSearcher.search(expression, i);
                 if (pair == null) {
-                    throw config.getLexExceptionProducer().apply(expression, len - 1);
+                    throw config.lexExceptionProducer().apply(expression, len - 1);
                 }
                 String value = expression.substring(i, pair.first());
                 Number num = config.parseNumber(value, pair.second());
@@ -126,7 +126,7 @@ public class Lexer {
             if (c == '\'' || c == '"' || c == '`') {
                 String value = StringSearcher.searchLiteral(expression, i);
                 if (value == null) {
-                    throw config.getLexExceptionProducer().apply(expression, len - 1);
+                    throw config.lexExceptionProducer().apply(expression, len - 1);
                 }
                 StringToken token;
                 if (c == '\'') {
@@ -156,7 +156,7 @@ public class Lexer {
                 continue;
             }
 
-            throw config.getLexExceptionProducer().apply(expression, i);
+            throw config.lexExceptionProducer().apply(expression, i);
         }
     }
 }

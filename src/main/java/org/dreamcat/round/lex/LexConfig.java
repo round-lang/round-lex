@@ -8,14 +8,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.dreamcat.common.Pair;
-import org.dreamcat.common.function.QuaFunction;
 import org.dreamcat.common.util.NumberUtil;
-import org.dreamcat.common.util.StreamUtil;
 import org.dreamcat.round.exception.LexCompileException;
 import org.dreamcat.round.exception.SyntaxCompileException;
 
@@ -25,7 +22,7 @@ import org.dreamcat.round.exception.SyntaxCompileException;
  */
 @Getter
 @Setter
-@Accessors(chain = true)
+@Accessors(fluent = true)
 public class LexConfig {
 
     /**

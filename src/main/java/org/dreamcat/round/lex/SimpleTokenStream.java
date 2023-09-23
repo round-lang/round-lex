@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import org.dreamcat.common.util.StreamUtil;
+import org.dreamcat.common.util.NumberUtil;
 
 /**
  * @author Jerry Will
@@ -75,11 +75,11 @@ public class SimpleTokenStream implements TokenStream {
     @Override
     public <T> T throwWrongSyntax() {
         if (tokens.isEmpty()) {
-            throw config.getSyntaxExceptionProducer().apply(null, this);
+            throw config.syntaxExceptionProducer().apply(null, this);
         }
-        int adjustedOffset = StreamUtil.limitRange(offset, 0, tokens.size() - 1);
+        int adjustedOffset = NumberUtil.limitRange(offset, 0, tokens.size() - 1);
         Token token = tokens.get(adjustedOffset);
-        throw config.getSyntaxExceptionProducer().apply(token, copy());
+        throw config.syntaxExceptionProducer().apply(token, copy());
     }
 
     @Override

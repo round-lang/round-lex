@@ -96,7 +96,7 @@ class LazyTokenStream implements TokenStream {
             if (c <= ' ') continue;
 
             // comment
-            List<String> singleComments = config.getSingleComments();
+            List<String> singleComments = config.singleComments();
             if (ObjectUtil.isNotEmpty(singleComments)) {
                 for (String singleComment : singleComments) {
                     char first = singleComment.charAt(0);
@@ -111,7 +111,7 @@ class LazyTokenStream implements TokenStream {
                 }
             }
 
-            List<Pair<String, String>> multipleComments = config.getMultipleComments();
+            List<Pair<String, String>> multipleComments = config.multipleComments();
             if (ObjectUtil.isNotEmpty(multipleComments)) {
                 for (Pair<String, String> multipleComment : multipleComments) {
                     String start = multipleComment.first(), end = multipleComment.second();
@@ -127,7 +127,7 @@ class LazyTokenStream implements TokenStream {
                                 return true;
                             }
                         }
-                        throw config.getLexExceptionProducer().apply(expression, i);
+                        throw config.lexExceptionProducer().apply(expression, i);
                     }
                 }
             }
@@ -135,7 +135,7 @@ class LazyTokenStream implements TokenStream {
             // identifier or identifier value
             if (StringUtil.isFirstVariableChar(c)) {
                 String v = StringSearcher.searchVar(expression, i);
-                Token token = config.getKeywords().get(v);
+                Token token = config.keywords().get(v);
                 if (token == null) {
                     token = lexer.identifierCache.computeIfAbsent(v, IdentifierToken::new);
                 }
@@ -148,7 +148,7 @@ class LazyTokenStream implements TokenStream {
             if (StringUtil.isNumberChar(c)) {
                 Pair<Integer, Boolean> pair = NumberSearcher.search(expression, i);
                 if (pair == null) {
-                    throw config.getLexExceptionProducer().apply(expression, len - 1);
+                    throw config.lexExceptionProducer().apply(expression, len - 1);
                 }
                 String value = expression.substring(i, pair.first());
                 Number num = config.parseNumber(value, pair.second());
@@ -164,7 +164,7 @@ class LazyTokenStream implements TokenStream {
             if (c == '\'' || c == '"' || c == '`') {
                 String value = StringSearcher.searchLiteral(expression, i);
                 if (value == null) {
-                    throw config.getLexExceptionProducer().apply(expression, len - 1);
+                    throw config.lexExceptionProducer().apply(expression, len - 1);
                 }
                 StringToken token;
                 if (c == '\'') {
@@ -194,7 +194,7 @@ class LazyTokenStream implements TokenStream {
                 return true;
             }
 
-            throw config.getLexExceptionProducer().apply(expression, i);
+            throw config.lexExceptionProducer().apply(expression, i);
         }
         return false;
     }
