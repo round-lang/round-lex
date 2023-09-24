@@ -47,6 +47,7 @@ public enum OperatorToken implements Token {
     QUESTION("?", 1),
     DOUBLE_ADD("++", 1),
     DOUBLE_SUB("--", 1),
+    IDENTIFIER("", MUL.priority), // priority same as * /
     ;
 
     final String raw;
