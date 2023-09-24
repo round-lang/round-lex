@@ -122,14 +122,15 @@ public enum OperatorToken implements Token {
                 return Pair.of(DOUBLE_ADD, offset + 2);
             } else return Pair.of(ADD, offset + 1);
         } else if (c == '-') {
-            if (offset < size - 1 && sql.charAt(offset + 1) == '-') {
+            if (offset < size - 1) {
                 char n = sql.charAt(offset + 1);
                 if (n == '-') {
                     return Pair.of(DOUBLE_SUB, offset + 2);
                 } else if (n == '>') {
                     return Pair.of(ROW, offset + 2);
                 }
-            } else return Pair.of(SUB, offset + 1);
+            }
+            return Pair.of(SUB, offset + 1);
         } else if (c == '*') {
             if (offset < size - 1 && sql.charAt(offset + 1) == '*') {
                 return Pair.of(DOUBLE_MUL, offset + 2);
@@ -178,9 +179,8 @@ public enum OperatorToken implements Token {
                 } else if (n == '<') {
                     return Pair.of(LEFT_SHIFT, offset + 2);
                 }
-            } else {
-                return Pair.of(LT, offset + 1);
             }
+            return Pair.of(LT, offset + 1);
         } else if (c == '>') {
             if (offset < size - 1 && sql.charAt(offset + 1) == '=') {
                 char n = sql.charAt(offset + 1);
@@ -191,9 +191,8 @@ public enum OperatorToken implements Token {
                         return Pair.of(UNSIGNED_RIGHT_SHIFT, offset + 3);
                     } return Pair.of(RIGHT_SHIFT, offset + 2);
                 }
-            } else {
-                return Pair.of(GT, offset + 1);
             }
+            return Pair.of(GT, offset + 1);
         } else if (c == '^') {
             return Pair.of(BIT_XOR, offset + 1);
         } else if (c == '~') {
