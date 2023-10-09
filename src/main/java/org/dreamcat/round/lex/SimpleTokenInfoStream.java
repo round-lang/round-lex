@@ -19,7 +19,7 @@ public class SimpleTokenInfoStream extends SimpleTokenStream {
 
     // only invoke it in a lexer
     public void add(Token token, int start, int end) {
-        TokenInfo tokenInfo = TokenInfo.of(token, start, end);
+        TokenInfo tokenInfo = new TokenInfo(token, start, end);
         computeTokenInfo(tokenInfo);
         tokens.add(tokenInfo);
         size++;

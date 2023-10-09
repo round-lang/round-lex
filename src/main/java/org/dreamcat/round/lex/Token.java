@@ -88,6 +88,10 @@ public interface Token {
         return false;
     }
 
+    default Token replace(Token token) {
+        return token;
+    }
+
     enum Type {
         IDENTIFIER,
         STRING,
@@ -96,4 +100,5 @@ public interface Token {
         PUNCTUATION,
         COMMENT,
     }
+
 }
